@@ -1,0 +1,43 @@
+{
+    "id": "232f870d-4aa7-427f-bc51-aa6ec99f7e03",
+    "model": "sonar-pro",
+    "created": 1743481330,
+    "usage": {
+        "prompt_tokens": 185,
+        "completion_tokens": 507,
+        "total_tokens": 692,
+        "search_context_size": "high"
+    },
+    "citations": [
+        "https://opentools.ai/news/celebrating-tech-that-transforms-unveiling-the-2024-good-tech-awards",
+        "https://www.businesswire.com/news/home/20241015155947/en/Granica-Crowned-a-Winner-in-the-2024-A.I.-Awards",
+        "https://www.youtube.com/watch?v=p3mGyj-hnW4",
+        "https://www.businesswire.com/news/home/20240926718725/en/Granica-Named-a-Finalist-in-the-2024-A.I.-Awards",
+        "https://opentools.ai/news/ces-2025-where-tech-dreams-take-center-stage",
+        "https://granica.ai/blog",
+        "https://rsf.org/en/2024-world-press-freedom-index-journalism-under-political-pressure",
+        "https://www.thesoftwarereport.com/the-top-50-software-ceos-of-2024/",
+        "https://www.businesswire.com/news/home/20250122759100/en/NEA-Promotes-Hunter-Worland-and-Mustafa-Neemuchwala-to-Principal",
+        "https://agricom.ef.uns.ac.rs/wp-content/uploads/2024/10/Osnove-agrarne-ekonomije-textbook.pdf",
+        "https://thekf.org/app/uploads/2024/11/newsletter-2024-lr.pdf",
+        "https://culture.pl/en",
+        "https://www.instagram.com/vogue.polska/?__d=1",
+        "https://strefabiznesu.pl/zmiany-w-wyplatach-800-plus-w-kwietniu-wiele-rodzin-sie-ucieszy/ar/c3p2-27421285",
+        "https://www.ekapija.com/news/5120051/milijarder-pozajmio-svoj-mozak-ai-masini-za-10-dolara-odgovor-na-pitanje"
+    ],
+    "object": "chat.completion",
+    "choices": [
+        {
+            "index": 0,
+            "finish_reason": "stop",
+            "message": {
+                "role": "assistant",
+                "content": "Here is a JSON array with URLs related to granica.ai from the past year, including both official and third-party sources:\n\n[\n  {\n    \"url\": \"https://granica.ai/blog\",\n    \"title\": \"AI Development Blog & News - Granica AI\",\n    \"description\": \"Granica's official blog featuring articles on AI infrastructure, data lakes, and model optimization techniques. Provides insights into the company's technology and focus areas.\"\n  },\n  {\n    \"url\": \"https://www.businesswire.com/news/home/20241015155947/en/Granica-Crowned-a-Winner-in-the-2024-A.I.-Awards\",\n    \"title\": \"Granica Crowned a Winner in the 2024 A.I. Awards - Business Wire\",\n    \"description\": \"Press release announcing Granica winning two categories in the 2024 A.I. Awards, highlighting the company's AI data readiness platform and its impact in the industry.\"\n  },\n  {\n    \"url\": \"https://www.businesswire.com/news/home/20240926718725/en/Granica-Named-a-Finalist-in-the-2024-A.I.-Awards\",\n    \"title\": \"Granica Named a Finalist in the 2024 A.I. Awards - Business Wire\",\n    \"description\": \"Announcement of Granica being named a finalist in three categories of the 2024 A.I. Awards, showcasing the company's growing recognition in the AI industry.\"\n  },\n  {\n    \"url\": \"https://www.thesoftwarereport.com/the-top-50-software-ceos-of-2024/\",\n    \"title\": \"The Top 50 Software CEOs of 2024\",\n    \"description\": \"Mentions Rahul Ponnala, CEO and Co-Founder of Granica.AI, in a list of top software CEOs, highlighting the company's focus on helping enterprises prepare data for AI deployment and scaling.\"\n  },\n  {\n    \"url\": \"https://www.businesswire.com/news/home/20250122759100/en/NEA-Promotes-Hunter-Worland-and-Mustafa-Neemuchwala-to-Principal\",\n    \"title\": \"NEA Promotes Hunter Worland and Mustafa Neemuchwala to Principal\",\n    \"description\": \"Mentions Granica as part of NEA's investment portfolio, indicating the company's backing by a major venture capital firm and its position in the AI infrastructure space.\"\n  }\n]"
+            },
+            "delta": {
+                "role": "assistant",
+                "content": ""
+            }
+        }
+    ]
+}
