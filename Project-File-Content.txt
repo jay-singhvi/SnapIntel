@@ -1,0 +1,956 @@
+
+==================================================
+Directory: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector
+==================================================
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/README.md
+==================================================
+# Company URL Collector
+
+A tool for collecting and managing URLs related to companies using the Perplexity API.
+
+## Overview
+
+This tool helps gather URLs related to specific companies, categorizing them as first-party (from the company's own domain) or third-party (mentions from other domains), and evaluating their relevance to the company's business.
+
+## Features
+
+- Collects company-related URLs using Perplexity's advanced search capabilities
+- Classifies URLs as first-party or third-party
+- Evaluates URL relevance based on content analysis
+- Stores and manages collected URLs with duplication prevention
+- REST API for integration with web applications
+- Supports filtering by URL type and relevance
+
+## Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/SnapIntel.git
+   cd SnapIntel
+   ```
+
+2. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables:
+   Create a `.env` file with:
+   ```
+   PERPLEXITY_API_KEY=your_perplexity_api_key
+   ```
+
+## Usage
+
+### Command Line Interface
+
+```bash
+python -m company_url_collector.src.main --company "Elastic" --url "https://elastic.co" --duration "1 Month" --output results.json
+```
+
+Parameters:
+- `--company`: Company name to search for
+- `--url`: Company's website URL (used for classification)
+- `--duration`: Time range for search (options: "24 hrs", "7 days", "1 Month", "3 Months", "6 Months", "1 year", "All time")
+- `--output`: Optional filename to save results
+- `--api-key`: Optional Perplexity API key (can also be set via environment variable)
+
+### Python API
+
+```python
+from company_url_collector.src.company_url_collector import CompanyURLCollector
+import os
+
+api_key = os.environ.get("PERPLEXITY_API_KEY")
+collector = CompanyURLCollector(api_key)
+
+result = collector.collect_urls(
+    company_name="granica.ai", 
+    company_url="https://granica.ai/", 
+    duration="1 Month"
+)
+
+# Access URL classification information
+for url_entry in result['new_urls']:
+    print(f"URL: {url_entry['url']}")
+    print(f"First Party: {url_entry['is_first_party']}")
+    print(f"Relevant: {url_entry['is_relevant']}")
+```
+
+### REST API
+
+Start the Flask server:
+
+```bash
+python flask_Backend.py
+```
+
+#### Endpoints:
+
+1. Collect URLs:
+   ```
+   POST /api/collect-urls
+   
+   {
+     "company_name": "Elastic",
+     "company_url": "https://elastic.co",
+     "duration": "1 Month"
+   }
+   ```
+
+2. Get stored URLs:
+   ```
+   GET /api/get-urls/{company_name}
+   ```
+
+3. Filter URLs:
+   ```
+   GET /api/filter-urls/{company_name}?is_first_party=true&is_relevant=true
+   ```
+
+## URL Classification
+
+The tool categorizes URLs in two ways:
+
+### First-Party vs Third-Party
+
+- **First-Party**: URLs from the company's own domain
+- **Third-Party**: URLs from other domains that mention the company
+
+### Relevance Assessment
+
+URLs are evaluated for relevance to the company's business using heuristics:
+- Company's own URLs are considered relevant by default
+- Third-party URLs are analyzed for relevance indicators
+- Common irrelevant patterns are filtered out (login pages, generic terms, etc.)
+
+## Data Storage
+
+URLs are stored in JSON files in the `data` directory, organized by company name. The storage system prevents duplication of URLs when performing repeated searches.
+
+## License
+
+[MIT License](LICENSE)
+
+
+==================================================
+Directory: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src
+==================================================
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/company_url_collector.py
+==================================================
+from typing import Dict, List, Any
+from datetime import datetime
+class CompanyURLCollector:
+    def __init__(self, api_key: str, storage_dir: str = "data"):
+        from .perplexity_client import PerplexityClient
+        from .url_extractor import URLExtractor
+        from .url_storage import URLStorage
+        self.perplexity_client = PerplexityClient(api_key)
+        self.url_extractor = URLExtractor()
+        self.url_storage = URLStorage(storage_dir)
+    def collect_urls(
+        self, company_name: str, company_url: str, duration: str
+    ) -> Dict[str, Any]:
+        try:
+            print(
+                f"Searching for URLs related to {company_name} from the past {duration}..."
+            )
+            perplexity_response = self.perplexity_client.search_company_urls(
+                company_name, company_url, duration
+            )
+            print("Extracting and validating URLs...")
+            raw_urls = self.url_extractor.extract_urls_from_response(
+                perplexity_response
+            )
+            validated_urls = self.url_extractor.validate_urls(raw_urls, company_url)
+            print("Updating URL storage...")
+            all_urls = self.url_storage.update_urls(company_name, validated_urls)
+            first_party_count = sum(1 for url in validated_urls if url.get("is_first_party", False))
+            third_party_count = len(validated_urls) - first_party_count
+            relevant_count = sum(1 for url in validated_urls if url.get("is_relevant", True))
+            irrelevant_count = len(validated_urls) - relevant_count
+            result = {
+                "company": company_name,
+                "company_url": company_url,
+                "search_time": datetime.now().isoformat(),
+                "duration": duration,
+                "new_urls_found": len(validated_urls),
+                "total_urls_stored": len(all_urls),
+                "first_party_urls_found": first_party_count,
+                "third_party_urls_found": third_party_count,
+                "relevant_urls_found": relevant_count,
+                "irrelevant_urls_found": irrelevant_count,
+                "new_urls": validated_urls,
+                "all_urls": all_urls,
+            }
+            print(
+                f"Successfully collected URLs for {company_name}. Found {len(validated_urls)} new URLs "
+                f"({first_party_count} from company site, {third_party_count} from third-party sites)."
+            )
+            return result
+        except Exception as e:
+            error_result = {
+                "company": company_name,
+                "company_url": company_url,
+                "search_time": datetime.now().isoformat(),
+                "duration": duration,
+                "error": str(e),
+                "success": False,
+            }
+            print(f"Error collecting URLs for {company_name}: {str(e)}")
+            return error_result
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/perplexity_client.py
+==================================================
+import requests
+import json
+import logging
+from typing import Dict, List, Any
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("PerplexityClient")
+class PerplexityClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.perplexity.ai/chat/completions"
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+    def search_company_urls(
+        self,
+        company_name: str,
+        company_url: str,
+        duration: str,
+        model: str = "sonar-pro",
+    ) -> Dict[str, Any]:
+        recency_mapping = {
+            "24 hrs": "day",
+            "7 days": "week",
+            "1 Month": "month",
+            "3 Months": "month",
+            "6 Months": "month",
+            "1 year": "year",
+            "All time": None,
+        }
+        system_prompt = (
+            "You are a URL focused data collection assistant that provides comprehensive lists of URLs related to company, its products and services. "
+            "You always try to find details on the company, its products and services and then try to find different types of content on internet like blogs, articles, news and press releases about the company, its products and services. "
+            "Focus on finding both company-owned sites and third-party mentions that are relevant to the company's products, services, blogs, articles, news, or industry presence."
+        )
+        user_prompt = (
+            f"Find URLs related to the company '{company_name}' (their website is {company_url}). "
+            f"Include both official company pages and third-party sites that mention the company. "
+            f"Focus on recent information from the past {duration}. "
+            f"For each URL, provide a title and brief description that explains how it relates to the company. "
+            f"Return only a valid JSON array where each item has the properties: url, title, and description."
+        )
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 4000,  
+            "web_search_options": {"search_context_size": "high"},
+        }
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {"type": "string"},
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                        },
+                        "required": ["url", "title", "description"],
+                    },
+                }
+            },
+        }
+        if recency_mapping.get(duration):
+            payload["search_recency_filter"] = recency_mapping.get(duration)
+        logger.info(
+            f"Searching for URLs related to {company_name} with duration {duration}"
+        )
+        logger.debug(f"Request payload: {json.dumps(payload, indent=2)}")
+        try:
+            response = requests.post(self.base_url, headers=self.headers, json=payload)
+            response.raise_for_status()
+            api_response = response.json()
+            logger.debug(f"API response keys: {api_response.keys()}")
+            return api_response
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error: {e}")
+            if hasattr(e, "response") and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                try:
+                    error_data = e.response.json()
+                    logger.error(f"Error response: {json.dumps(error_data, indent=2)}")
+                except:
+                    logger.error(f"Raw error response: {e.response.text}")
+            raise Exception(f"Error querying Perplexity API: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error: {str(e)}")
+            raise Exception(f"Error querying Perplexity API: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            raise Exception(f"Unexpected error in Perplexity API request: {str(e)}")
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/perplexity_client_v2.py
+==================================================
+import requests
+from typing import Dict, List, Any
+class PerplexityClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.perplexity.ai/chat/completions"
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+    def search_company_urls(
+        self,
+        company_name: str,
+        company_url: str,
+        duration: str,
+        model: str = "sonar-pro",
+    ) -> Dict[str, Any]:
+        recency_mapping = {
+            "24 hrs": "day",
+            "7 days": "week",
+            "1 Month": "month",
+            "3 Months": "month",
+            "6 Months": "month",
+            "1 year": "year",
+            "All time": None,
+        }
+        system_prompt = (
+            "You are a URL focused data collection assistant that provides comprehensive lists of URLs related to company, its products and services"
+            "You always try to find details on the company, its products and services and then try to find different types of content on internet like blogs, articles, news and press releases about the company, its products and services."
+            "Focus on finding both company-owned sites and third-party mentions that are relevant to the company's products, services, blogs, articles, news, or industry presence."
+        )
+        user_prompt = (
+            f"Find URLs related to the company '{company_name}' (their website is {company_url}). "
+            f"Include both official company pages and third-party sites that mention the company. "
+            f"Focus on recent information from the past {duration}. "
+            f"For each URL, provide a title and brief description that explains how it relates to the company."
+        )
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 8000,
+            "web_search_options": {"search_context_size": "high"},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "url": {"type": "string"},
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                            },
+                            "required": ["url", "title", "description"],
+                        },
+                    }
+                },
+            },
+        }
+        if recency_mapping.get(duration):
+            payload["search_recency_filter"] = recency_mapping.get(duration)
+        try:
+            response = requests.post(self.base_url, headers=self.headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Error querying Perplexity API: {str(e)}")
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/url_extractor.py
+==================================================
+from datetime import datetime
+from typing import Dict, List, Any
+import json
+import re
+import logging
+from urllib.parse import urlparse
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("URLExtractor")
+class URLExtractor:
+    @staticmethod
+    def extract_urls_from_response(
+        perplexity_response: Dict[str, Any],
+    ) -> List[Dict[str, str]]:
+        try:
+            logger.info("Extracting URLs from Perplexity response")
+            logger.debug(f"Response keys: {perplexity_response.keys()}")
+            if (
+                "choices" not in perplexity_response
+                or not perplexity_response["choices"]
+            ):
+                logger.error("No choices found in response")
+                logger.debug(
+                    f"Response content: {json.dumps(perplexity_response, indent=2)}"
+                )
+                return []
+            choice = perplexity_response["choices"][0]
+            logger.debug(f"Choice keys: {choice.keys()}")
+            if "message" not in choice:
+                logger.error("No message in choice")
+                return []
+            message = choice["message"]
+            logger.debug(f"Message keys: {message.keys()}")
+            if "content" not in message:
+                logger.error("No content in message")
+                return []
+            content = message["content"]
+            logger.debug(f"Content type: {type(content)}")
+            url_data = []
+            if isinstance(content, str):
+                try:
+                    logger.debug(f"Content preview: {content[:200]}...")
+                    url_data = json.loads(content)
+                    logger.info(
+                        f"Successfully parsed JSON string. Found {len(url_data)} URLs"
+                    )
+                except json.JSONDecodeError as e:
+                    logger.error(f"Error parsing content as JSON: {str(e)}")
+                    logger.debug(f"Content: {content}")
+                    return []
+            elif isinstance(content, list):
+                url_data = content
+                logger.info(f"Content is already a list. Found {len(url_data)} URLs")
+            else:
+                logger.error(f"Unexpected content type: {type(content)}")
+                return []
+            timestamp = datetime.now().isoformat()
+            for entry in url_data:
+                entry["timestamp"] = timestamp
+            logger.info(f"Extracted {len(url_data)} URLs from response")
+            if url_data and len(url_data) > 0:
+                logger.debug(f"First URL: {url_data[0].get('url', 'N/A')}")
+            return url_data
+        except Exception as e:
+            logger.error(
+                f"Error extracting URLs from Perplexity response: {str(e)}",
+                exc_info=True,
+            )
+            raise Exception(f"Error extracting URLs from Perplexity response: {str(e)}")
+    @staticmethod
+    def validate_urls(
+        url_data: List[Dict[str, str]], company_url: str = None
+    ) -> List[Dict[str, str]]:
+        validated_data = []
+        company_domain = (
+            URLExtractor._extract_domain(company_url) if company_url else None
+        )
+        logger.info(
+            f"Validating {len(url_data)} URLs against company domain: {company_domain}"
+        )
+        for entry in url_data:
+            url = entry.get("url", "")
+            if not url or not (url.startswith("http://") or url.startswith("https://")):
+                logger.debug(f"Skipping invalid URL: {url}")
+                continue
+            is_company_url = URLExtractor._is_company_url(url, company_domain)
+            entry["is_first_party"] = is_company_url
+            entry["is_relevant"] = URLExtractor._assess_relevance(
+                url,
+                entry.get("title", ""),
+                entry.get("description", ""),
+                company_domain,
+            )
+            validated_data.append(entry)
+        logger.info(f"Validated {len(validated_data)} URLs")
+        first_party_count = sum(
+            1 for url in validated_data if url.get("is_first_party", False)
+        )
+        logger.info(
+            f"First-party URLs: {first_party_count}, Third-party URLs: {len(validated_data) - first_party_count}"
+        )
+        return validated_data
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        if not url:
+            return ""
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        try:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split(".")
+            if len(domain_parts) > 2 and domain_parts[-2] in [
+                "co",
+                "com",
+                "org",
+                "net",
+                "gov",
+                "edu",
+            ]:
+                return f"{domain_parts[-3]}.{domain_parts[-2]}.{domain_parts[-1]}"
+            if len(domain_parts) > 1:
+                return f"{domain_parts[-2]}.{domain_parts[-1]}"
+            return parsed_url.netloc
+        except Exception as e:
+            logger.error(f"Error extracting domain from {url}: {str(e)}")
+            return ""
+    @staticmethod
+    def _is_company_url(url: str, company_domain: str) -> bool:
+        if not url or not company_domain:
+            return False
+        try:
+            url_domain = URLExtractor._extract_domain(url)
+            url_domain = url_domain.lower()
+            company_domain = company_domain.lower()
+            return url_domain == company_domain or url_domain.endswith(
+                f".{company_domain}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error checking if URL {url} belongs to company domain {company_domain}: {str(e)}"
+            )
+            return False
+    @staticmethod
+    def _assess_relevance(
+        url: str, title: str, description: str, company_domain: str
+    ) -> bool:
+        if URLExtractor._is_company_url(url, company_domain):
+            return True
+        irrelevant_patterns = [
+            r"facebook\.com\/login",  
+            r"linkedin\.com\/jobs",  
+            r"/terms-of-service",  
+            r"/privacy-policy",  
+            r"/about-cookies",  
+            r"/sitemap\.xml",  
+            r"/robots\.txt",  
+        ]
+        for pattern in irrelevant_patterns:
+            if re.search(pattern, url, re.IGNORECASE):
+                logger.debug(f"URL {url} matches irrelevant pattern {pattern}")
+                return False
+        irrelevant_terms = [
+            "404",
+            "not found",
+            "error",
+        ]
+        combined_text = f"{title.lower()} {description.lower()}"
+        for term in irrelevant_terms:
+            if term in combined_text:
+                logger.debug(
+                    f"URL {url} contains irrelevant term '{term}' in title/description"
+                )
+                return False
+        return True
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/url_extractor_v2.py
+==================================================
+from datetime import datetime
+from typing import Dict, List, Any, Set
+import json
+import re
+from urllib.parse import urlparse
+class URLExtractor:
+    @staticmethod
+    def extract_urls_from_response(
+        perplexity_response: Dict[str, Any],
+    ) -> List[Dict[str, str]]:
+        try:
+            content = (
+                perplexity_response.get("choices", [])[0]
+                .get("message", {})
+                .get("content", "")
+            )
+            url_data = json.loads(content)
+            timestamp = datetime.now().isoformat()
+            for entry in url_data:
+                entry["timestamp"] = timestamp
+            return url_data
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            raise Exception(f"Error extracting URLs from Perplexity response: {str(e)}")
+    @staticmethod
+    def validate_urls(
+        url_data: List[Dict[str, str]], company_url: str = None
+    ) -> List[Dict[str, str]]:
+        validated_data = []
+        company_domain = (
+            URLExtractor._extract_domain(company_url) if company_url else None
+        )
+        for entry in url_data:
+            url = entry.get("url", "")
+            if not url or not (url.startswith("http://") or url.startswith("https://")):
+                continue
+            is_company_url = URLExtractor._is_company_url(url, company_domain)
+            entry["is_first_party"] = is_company_url
+            entry["is_relevant"] = URLExtractor._assess_relevance(
+                url,
+                entry.get("title", ""),
+                entry.get("description", ""),
+                company_domain,
+            )
+            validated_data.append(entry)
+        return validated_data
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        if not url:
+            return ""
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        try:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split(".")
+            if len(domain_parts) > 2 and domain_parts[-2] in [
+                "co",
+                "com",
+                "org",
+                "net",
+                "gov",
+                "edu",
+            ]:
+                return f"{domain_parts[-3]}.{domain_parts[-2]}.{domain_parts[-1]}"
+            if len(domain_parts) > 1:
+                return f"{domain_parts[-2]}.{domain_parts[-1]}"
+            return parsed_url.netloc
+        except Exception:
+            return ""
+    @staticmethod
+    def _is_company_url(url: str, company_domain: str) -> bool:
+        if not url or not company_domain:
+            return False
+        try:
+            url_domain = URLExtractor._extract_domain(url)
+            return url_domain == company_domain
+        except Exception:
+            return False
+    @staticmethod
+    def _assess_relevance(
+        url: str, title: str, description: str, company_domain: str
+    ) -> bool:
+        if URLExtractor._is_company_url(url, company_domain):
+            return True
+        irrelevant_patterns = [
+            r"facebook\.com\/login",  
+            r"linkedin\.com\/jobs",  
+            r"/terms-of-service",  
+            r"/privacy-policy",  
+            r"/about-cookies",  
+            r"/sitemap\.xml",  
+            r"/robots\.txt",  
+        ]
+        for pattern in irrelevant_patterns:
+            if re.search(pattern, url, re.IGNORECASE):
+                return False
+        irrelevant_terms = [
+            "404",
+            "not found",
+            "error",
+        ]
+        combined_text = f"{title.lower()} {description.lower()}"
+        for term in irrelevant_terms:
+            if term in combined_text:
+                return False
+        return True
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/company_url_collector/src/url_storage.py
+==================================================
+import os
+import json
+from typing import Dict, List, Any
+from datetime import datetime
+class URLStorage:
+    def __init__(self, storage_dir: str = "data"):
+        self.storage_dir = storage_dir
+        os.makedirs(storage_dir, exist_ok=True)
+    def _get_storage_path(self, company_name: str) -> str:
+        normalized_name = company_name.lower().replace(" ", "_").replace(".", "_")
+        return os.path.join(self.storage_dir, f"{normalized_name}_urls.json")
+    def get_stored_urls(self, company_name: str) -> List[Dict[str, str]]:
+        file_path = self._get_storage_path(company_name)
+        if not os.path.exists(file_path):
+            return []
+        try:
+            with open(file_path, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return []
+    def update_urls(
+        self, company_name: str, new_urls: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        existing_urls = self.get_stored_urls(company_name)
+        existing_url_set = {entry["url"] for entry in existing_urls}
+        for url_entry in new_urls:
+            if url_entry["url"] not in existing_url_set:
+                existing_urls.append(url_entry)
+                existing_url_set.add(url_entry["url"])
+        file_path = self._get_storage_path(company_name)
+        with open(file_path, "w") as f:
+            json.dump(existing_urls, f, indent=2)
+        return existing_urls
+
+
+==================================================
+Directory: /home/exouser/Desktop/GitHub_Repos/SnapIntel/data
+==================================================
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/data/granica_ai_urls.json
+==================================================
+[]
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/flask_Backend.py
+==================================================
+from flask import Flask, request, jsonify
+import os
+from dotenv import load_dotenv
+from company_url_collector.src.company_url_collector import CompanyURLCollector
+load_dotenv()
+app = Flask(__name__)
+api_key = os.environ.get("PERPLEXITY_API_KEY")
+collector = CompanyURLCollector(api_key)
+@app.route("/api/collect-urls", methods=["POST"])
+def collect_urls():
+    data = request.json
+    required_fields = ["company_name", "company_url", "duration"]
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+    valid_durations = [
+        "24 hrs",
+        "7 days",
+        "1 Month",
+        "3 Months",
+        "6 Months",
+        "1 year",
+        "All time",
+    ]
+    if data["duration"] not in valid_durations:
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid duration. Must be one of: {', '.join(valid_durations)}"
+                }
+            ),
+            400,
+        )
+    result = collector.collect_urls(
+        company_name=data["company_name"],
+        company_url=data["company_url"],
+        duration=data["duration"],
+    )
+    return jsonify(result)
+@app.route("/api/get-urls/<company_name>", methods=["GET"])
+def get_urls(company_name):
+    from company_url_collector.src.url_storage import URLStorage
+    storage = URLStorage()
+    urls = storage.get_stored_urls(company_name)
+    first_party_urls = [url for url in urls if url.get("is_first_party", False)]
+    third_party_urls = [url for url in urls if not url.get("is_first_party", False)]
+    relevant_urls = [url for url in urls if url.get("is_relevant", True)]
+    irrelevant_urls = [url for url in urls if not url.get("is_relevant", True)]
+    return jsonify({
+        "company": company_name,
+        "urls": urls,
+        "count": len(urls),
+        "first_party_count": len(first_party_urls),
+        "third_party_count": len(third_party_urls),
+        "relevant_count": len(relevant_urls),
+        "irrelevant_count": len(irrelevant_urls)
+    })
+@app.route("/api/filter-urls/<company_name>", methods=["GET"])
+def filter_urls(company_name):
+    from company_url_collector.src.url_storage import URLStorage
+    storage = URLStorage()
+    urls = storage.get_stored_urls(company_name)
+    is_first_party = request.args.get("is_first_party")
+    is_relevant = request.args.get("is_relevant")
+    if is_first_party is not None:
+        is_first_party = is_first_party.lower() == "true"
+        urls = [url for url in urls if url.get("is_first_party", False) == is_first_party]
+    if is_relevant is not None:
+        is_relevant = is_relevant.lower() == "true"
+        urls = [url for url in urls if url.get("is_relevant", True) == is_relevant]
+    return jsonify({
+        "company": company_name,
+        "filtered_urls": urls,
+        "count": len(urls)
+    })
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+==================================================
+File: /home/exouser/Desktop/GitHub_Repos/SnapIntel/test_script.py
+==================================================
+from dotenv import load_dotenv
+import os
+import json
+import logging
+import time
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from fixed_perplexity_client import PerplexityClient
+    from fixed_url_extractor import URLExtractor
+    from company_url_collector.src.url_storage import URLStorage
+except ImportError:
+    from company_url_collector.src.perplexity_client import PerplexityClient
+    from company_url_collector.src.url_extractor import URLExtractor
+    from company_url_collector.src.url_storage import URLStorage
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("url_collector_test.log"), logging.StreamHandler()],
+)
+logger = logging.getLogger("TestScript")
+def test_url_collection(
+    api_key, company_name, company_url, duration, save_raw_response=True
+):
+    logger.info(f"Starting URL collection test for {company_name}")
+    start_time = time.time()
+    try:
+        perplexity_client = PerplexityClient(api_key)
+        url_extractor = URLExtractor()
+        url_storage = URLStorage("data")
+        logger.info("Step 1: Querying Perplexity API...")
+        perplexity_response = perplexity_client.search_company_urls(
+            company_name, company_url, duration
+        )
+        if save_raw_response:
+            with open(f"{company_name}_raw_response.json", "w") as f:
+                json.dump(perplexity_response, f, indent=2)
+            logger.info(f"Saved raw API response to {company_name}_raw_response.json")
+        logger.info("Step 2: Extracting URLs from response...")
+        try:
+            raw_urls = url_extractor.extract_urls_from_response(perplexity_response)
+            logger.info(f"Extracted {len(raw_urls)} URLs from response")
+        except Exception as e:
+            logger.error(f"Error extracting URLs: {str(e)}", exc_info=True)
+            logger.info("Attempting to save partial response data for analysis...")
+            with open(f"{company_name}_extraction_error.json", "w") as f:
+                json.dump(
+                    {
+                        "error": str(e),
+                        "response_keys": (
+                            list(perplexity_response.keys())
+                            if isinstance(perplexity_response, dict)
+                            else "Not a dict"
+                        ),
+                        "response_preview": (
+                            str(perplexity_response)[:1000] + "..."
+                            if len(str(perplexity_response)) > 1000
+                            else str(perplexity_response)
+                        ),
+                    },
+                    f,
+                    indent=2,
+                )
+            raise
+        logger.info("Step 3: Validating URLs...")
+        validated_urls = url_extractor.validate_urls(raw_urls, company_url)
+        logger.info(f"Validated {len(validated_urls)} URLs")
+        logger.info("Step 4: Updating URL storage...")
+        all_urls = url_storage.update_urls(company_name, validated_urls)
+        logger.info(f"Total URLs in storage: {len(all_urls)}")
+        first_party_count = sum(
+            1 for url in validated_urls if url.get("is_first_party", False)
+        )
+        third_party_count = len(validated_urls) - first_party_count
+        relevant_count = sum(
+            1 for url in validated_urls if url.get("is_relevant", True)
+        )
+        irrelevant_count = len(validated_urls) - relevant_count
+        logger.info(f"\nResults Summary:")
+        logger.info(f"- Total new URLs found: {len(validated_urls)}")
+        logger.info(
+            f"- First-party URLs: {first_party_count} ({int(first_party_count/len(validated_urls)*100 if validated_urls else 0)}%)"
+        )
+        logger.info(
+            f"- Third-party URLs: {third_party_count} ({int(third_party_count/len(validated_urls)*100 if validated_urls else 0)}%)"
+        )
+        logger.info(
+            f"- Relevant URLs: {relevant_count} ({int(relevant_count/len(validated_urls)*100 if validated_urls else 0)}%)"
+        )
+        logger.info(
+            f"- Irrelevant URLs: {irrelevant_count} ({int(irrelevant_count/len(validated_urls)*100 if validated_urls else 0)}%)"
+        )
+        logger.info(f"- Total URLs stored: {len(all_urls)}")
+        logger.info(f"\nDetailed URL Information (first 5):")
+        for i, url_entry in enumerate(validated_urls[:5]):
+            logger.info(f"\nURL {i+1}: {url_entry['url']}")
+            logger.info(f"Title: {url_entry['title']}")
+            logger.info(
+                f"First Party: {'Yes' if url_entry.get('is_first_party', False) else 'No'}"
+            )
+            logger.info(
+                f"Relevant: {'Yes' if url_entry.get('is_relevant', True) else 'No'}"
+            )
+            logger.info(f"Description: {url_entry['description']}")
+        output_file = f"{company_name}_results.json"
+        with open(output_file, "w") as f:
+            json.dump(
+                {
+                    "company": company_name,
+                    "company_url": company_url,
+                    "duration": duration,
+                    "new_urls_found": len(validated_urls),
+                    "total_urls_stored": len(all_urls),
+                    "first_party_urls_found": first_party_count,
+                    "third_party_urls_found": third_party_count,
+                    "relevant_urls_found": relevant_count,
+                    "irrelevant_urls_found": irrelevant_count,
+                    "new_urls": validated_urls,
+                    "all_urls": all_urls,
+                },
+                f,
+                indent=2,
+            )
+        logger.info(f"Full results saved to {output_file}")
+        elapsed_time = time.time() - start_time
+        logger.info(f"Test completed successfully in {elapsed_time:.2f} seconds")
+    except Exception as e:
+        logger.error(f"Test failed: {str(e)}", exc_info=True)
+        elapsed_time = time.time() - start_time
+        logger.info(f"Test failed after {elapsed_time:.2f} seconds")
+        raise
+if __name__ == "__main__":
+    load_dotenv()
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        logger.error("PERPLEXITY_API_KEY environment variable not set")
+        sys.exit(1)
+    company_name = "granica.ai"
+    company_url = "https://granica.ai/"
+    duration = "1 Month"
+    try:
+        test_url_collection(api_key, company_name, company_url, duration)
+    except Exception as e:
+        logger.error(f"Test failed with error: {str(e)}")
+        sys.exit(1)
+

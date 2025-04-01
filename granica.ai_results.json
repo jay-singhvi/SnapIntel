@@ -1,0 +1,47 @@
+{
+  "company": "granica.ai",
+  "company_url": "https://granica.ai/",
+  "duration": "1 Month",
+  "new_urls_found": 2,
+  "total_urls_stored": 2,
+  "first_party_urls_found": 0,
+  "third_party_urls_found": 2,
+  "relevant_urls_found": 2,
+  "irrelevant_urls_found": 0,
+  "new_urls": [
+    {
+      "url": "https://www.instagram.com/revelohq/?locale=zh_CN",
+      "title": "Revelo (@revelohq) \u00b7 Instagram \u7167\u7247\u548c\u89c6\u9891",
+      "description": "This Instagram post mentions Yongsheng Wu, VP of Engineering at Granica.ai, in the context of an event. It highlights Granica.ai's involvement in engineering discussions and collaborations.",
+      "timestamp": "2025-04-01T02:26:55.368573",
+      "is_first_party": false,
+      "is_relevant": true
+    },
+    {
+      "url": "https://www.cloud-awards.com/2023-2024-cloud-awards-shortlist",
+      "title": "2023-2024 Cloud Awards Shortlist | Cloud Computing & SaaS Awards",
+      "description": "While the page primarily lists shortlisted companies for cloud awards, it may include Granica.ai if it has been recognized for its cloud computing innovations. This would showcase the company's industry presence and achievements.",
+      "timestamp": "2025-04-01T02:26:55.368573",
+      "is_first_party": false,
+      "is_relevant": true
+    }
+  ],
+  "all_urls": [
+    {
+      "url": "https://www.instagram.com/revelohq/?locale=zh_CN",
+      "title": "Revelo (@revelohq) \u00b7 Instagram \u7167\u7247\u548c\u89c6\u9891",
+      "description": "This Instagram post mentions Yongsheng Wu, VP of Engineering at Granica.ai, in the context of an event. It highlights Granica.ai's involvement in engineering discussions and collaborations.",
+      "timestamp": "2025-04-01T02:26:55.368573",
+      "is_first_party": false,
+      "is_relevant": true
+    },
+    {
+      "url": "https://www.cloud-awards.com/2023-2024-cloud-awards-shortlist",
+      "title": "2023-2024 Cloud Awards Shortlist | Cloud Computing & SaaS Awards",
+      "description": "While the page primarily lists shortlisted companies for cloud awards, it may include Granica.ai if it has been recognized for its cloud computing innovations. This would showcase the company's industry presence and achievements.",
+      "timestamp": "2025-04-01T02:26:55.368573",
+      "is_first_party": false,
+      "is_relevant": true
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "f83f7630-c18e-4708-8f41-7881e7dce7ab",
+  "model": "sonar-pro",
+  "created": 1743478220,
+  "usage": {
+    "prompt_tokens": 184,
+    "completion_tokens": 385,
+    "total_tokens": 569,
+    "search_context_size": "high"
+  },
+  "citations": [
+    "https://www.stocktitan.net/news/GRP/granite-reit-declares-distribution-for-march-b4g0retblkf3.html",
+    "https://macholevante.com/pl/news_pl/121259/zaklad-tech-tytana-na-142-miliony-dolarow-w-teksasie-nowa-granica-ai/",
+    "https://opentools.ai/news/nasas-grassland-mission-mapping-illinois-for-a-greener-future",
+    "https://www.antenam.net/index.php/stav/358485-evropa-se-okuplja-oko-zajednickih-nacela-balkan-ostaje-na-margini",
+    "https://travel-europe.europa.eu/ees_en",
+    "https://www.instagram.com/revelohq/?locale=zh_CN",
+    "https://berlin.bard.edu/news/events/",
+    "https://www.instagram.com/aktuelno_me/p/C_fZ5VfoRlh/?locale=kk-KZ",
+    "https://telegrafi.com/en/tag/blerim-granica/",
+    "https://www.cloud-awards.com/2023-2024-cloud-awards-shortlist",
+    "https://opentools.ai/news/earths-sea-ice-plummets-to-record-low-a-global-wakeup-call",
+    "https://www.politico.eu/article/poland-military-training-war-defense-russia-belarus/",
+    "https://www.instagram.com/culture_pl/p/DHT12sHRXyj/",
+    "https://www.instagram.com/pldiindonesia/p/DHp_shSTG9a/?__d=11"
+  ],
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "[\n{\n\"url\": \"https://www.instagram.com/revelohq/?locale=zh_CN\",\n\"title\": \"Revelo (@revelohq) \u00b7 Instagram \u7167\u7247\u548c\u89c6\u9891\",\n\"description\": \"This Instagram post mentions Yongsheng Wu, VP of Engineering at Granica.ai, indicating a connection between Revelo and Granica.ai in the context of engineering roles.\"\n},\n{\n\"url\": \"https://www.stocktitan.net/news/GRP/granite-reit-declares-distribution-for-march-b4g0retblkf3.html\",\n\"title\": \"Granite REIT Declares Distribution for March 2025 - GRP - Stock Titan\",\n\"description\": \"This article discusses Granite Real Estate Investment Trust, which is unrelated to Granica.ai, but the similarity in names might cause confusion. It does not provide information about Granica.ai.\"\n},\n{\n\"url\": \"https://macholevante.com/pl/news_pl/121259/zaklad-tech-tytana-na-142-miliony-dolarow-w-teksasie-nowa-granica-ai/\",\n\"title\": \"Zak\u0142ad tech tytana na 142 miliony dolar\u00f3w w Teksasie\",\n\"description\": \"This article discusses a tech investment in Texas but does not mention Granica.ai directly; it focuses on Foxconn's AI server production, which is unrelated to Granica.ai.\"\n},\n{\n\"url\": \"https://telegrafi.com/en/tag/blerim-granica/\",\n\"title\": \"All news from Blerim Granica - Telegrafi\",\n\"description\": \"This page aggregates news related to Blerim Granica, which is unrelated to Granica.ai. It does not provide information about the company Granica.ai.\"\n}\n]"
+      },
+      "delta": {
+        "role": "assistant",
+        "content": ""
+      }
+    }
+  ]
+}

@@ -1,2 +1,0 @@
-# SnapIntel
-SnapIntel - Gather Data
